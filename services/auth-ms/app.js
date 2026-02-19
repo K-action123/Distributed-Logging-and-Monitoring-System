@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
@@ -10,10 +11,21 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// Global rate limiter for auth endpoints
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 requests per `window` (here, per 15 minutes)
+    message: {
+        error: 'Too many attempts from this IP, please try again after 15 minutes'
+    },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
-// Register a new user and a new team
-app.post('/register', async (req, res) => {
+// Apply rate limiter to registration and login
+app.post('/register', authLimiter, async (req, res) => {
     const { email, password, teamName } = req.body;
 
     try {
@@ -40,7 +52,7 @@ app.post('/register', async (req, res) => {
 });
 
 // Login and get JWT
-app.post('/login', async (req, res) => {
+app.post('/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
 
     try {
