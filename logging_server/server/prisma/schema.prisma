@@ -14,4 +14,5 @@ model log {
   logLevel      String?     @db.Text  // should probably be an enum or int so you can do logLevel >= "error" or similar
   message       String      @db.Text
   requestId     Int?
+  teamId        Int?        @default(1)
 }
